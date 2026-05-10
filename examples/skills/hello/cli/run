@@ -1,0 +1,3 @@
+#!/bin/sh
+# entry point for CLI usage of the skill
+./bin/run "$@"

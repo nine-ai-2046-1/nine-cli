@@ -2,9 +2,6 @@ pub mod welcome;
 
 /// Run the CLI. Currently only shows the welcome message.
 pub fn run() {
-    // show a small welcome first
-    welcome::show();
-
     // ensure required folders exist in $HOME/.nine-cli
     if let Err(e) = ensure_dirs() {
         eprintln!("建立資料夾時出錯: {}", e);
@@ -14,7 +11,11 @@ pub fn run() {
     // dispatch based on argv: if no args -> show user guide; else try to run skill
     let mut args = std::env::args().skip(1);
     match args.next() {
-        None => show_user_guide(),
+        None => {
+            // only show welcome when user ran the CLI with no arguments
+            welcome::show();
+            show_user_guide()
+        },
         Some(first) => {
             // support `nine-cli skill ...` subcommands for install/list/uninstall
             if first == "skill" {
@@ -164,7 +165,8 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
         return Err("請指定 skill 子命令: install|list|uninstall".to_string());
     }
     match args[0].as_str() {
-        "install" => {
+        // support both new `add` and legacy `install`
+        "add" | "install" => {
             if args.len() < 2 {
                 return Err(load_message("please_provide_install_path", None));
             }
@@ -172,7 +174,8 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
             install_skill(path)
         }
         "list" => list_skills(),
-        "uninstall" => {
+        // support both new `remove` and legacy `uninstall`
+        "remove" | "uninstall" => {
             if args.len() < 2 {
                 return Err(load_message("please_provide_uninstall_name", None));
             }
@@ -206,15 +209,15 @@ fn install_skill(src_path: &str) -> Result<(), String> {
     }
 
     // validate required files and folders according to spec + our requirements
-    // required: bin/run (file), CLI.md (file), TEST.md (file), tests (dir)
-    let bin_run = src.join("bin").join("run");
+    // required: cli/run (file), CLI.md (file), TEST.md (file), tests (dir)
+    let cli_run = src.join("cli").join("run");
     let cli_md = src.join("CLI.md");
     let test_md = src.join("TEST.md");
     let tests_dir = src.join("tests");
 
-    if !bin_run.is_file() || !cli_md.is_file() || !test_md.is_file() || !tests_dir.is_dir() {
+    if !cli_run.is_file() || !cli_md.is_file() || !test_md.is_file() || !tests_dir.is_dir() {
         let mut vars = std::collections::HashMap::new();
-        vars.insert("reason".into(), "需要 bin/run, CLI.md, TEST.md 同 tests folder".into());
+        vars.insert("reason".into(), "需要 cli/run, CLI.md, TEST.md 同 tests folder".into());
         return Err(load_message("skill_md_read_failed", Some(&vars)));
     }
 
@@ -243,11 +246,11 @@ fn install_skill(src_path: &str) -> Result<(), String> {
 
     copy_dir_all(src, &dest).map_err(|e| format!("複製 skill 時出錯: {}", e))?;
 
-    // set permissions: bin/run executable; scripts/* executable
+    // set permissions: cli/run executable; scripts/* executable
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let run_path = dest.join("bin").join("run");
+        let run_path = dest.join("cli").join("run");
         if let Ok(meta) = fs::metadata(&run_path) {
             let mut perm = meta.permissions();
             perm.set_mode(0o755);
@@ -388,34 +391,10 @@ fn verify_skill(skill: &std::path::Path) -> Result<(), String> {
         return Err("SKILL.md name must not start/end with hyphen or contain consecutive hyphens".to_string());
     }
 
-    // ensure bin/run exists and seems binary
-    let run = skill.join("bin").join("run");
+    // ensure cli/run exists (developer may provide binary or script)
+    let run = skill.join("cli").join("run");
     if !run.is_file() {
-        return Err("bin/run not found".to_string());
-    }
-    // read a bit of content and heuristically detect if it's binary (contains NUL) or text
-    if let Ok(bytes) = fs::read(&run) {
-        // if file is small (< 1MB) and contains NUL, treat as binary; otherwise if contains only printable text treat as text
-        let sample = &bytes[..std::cmp::min(bytes.len(), 4096)];
-        let has_nul = sample.iter().any(|b| *b == 0);
-        if !has_nul {
-            // also check for common binary file headers like %PDF, PNG, ELF, MZ
-            let header = &sample[..std::cmp::min(sample.len(), 8)];
-            let hdrs: [&[u8]; 4] = [b"%PDF", b"\x89PNG\r\n\x1a\n", b"\x7fELF", b"MZ"];
-            let mut looks_binary = false;
-            for h in &hdrs {
-                if header.starts_with(h) {
-                    looks_binary = true;
-                    break;
-                }
-            }
-            if !looks_binary {
-                // fallback: if sample is printable ASCII, consider it text -> reject
-                if sample.iter().all(|b| (32..=126).contains(b) || *b == b'\n' || *b == b'\r' || *b == b'\t') {
-                    return Err("bin/run looks like plain text; expected a binary or executable script".to_string());
-                }
-            }
-        }
+        return Err("cli/run not found".to_string());
     }
 
     Ok(())
