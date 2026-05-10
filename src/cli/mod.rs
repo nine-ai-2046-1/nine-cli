@@ -1,5 +1,9 @@
 pub mod welcome;
 
+// include unit tests module file
+#[cfg(test)]
+mod verify_tests;
+
 /// Run the CLI. Currently only shows the welcome message.
 pub fn run() {
     // ensure required folders exist in $HOME/.nine-cli
