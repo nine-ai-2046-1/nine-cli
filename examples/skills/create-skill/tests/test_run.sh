@@ -5,11 +5,15 @@
 
 set -eu
 
+# Resolve script and skill directories so tests can be run from any CWD
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Try environment override first
 if [ -n "${TEST_BIN:-}" ]; then
   BIN="$TEST_BIN"
-elif [ -x "$(pwd)/../../../..//target/debug/nine-cli" ]; then
-  BIN="$(pwd)/../../../..//target/debug/nine-cli"
+elif [ -x "$(pwd)/target/debug/nine-cli" ]; then
+  BIN="$(pwd)/target/debug/nine-cli"
 elif command -v nine-cli >/dev/null 2>&1; then
   BIN="nine-cli"
 else
@@ -19,7 +23,7 @@ fi
 
 echo "Using nine-cli at: $BIN"
 
-OUT="$($BIN skill verify . --json 2>&1)" || {
+OUT="$($BIN skill verify "$SKILL_DIR" --json 2>&1)" || {
   echo "nine-cli verify failed to run:" >&2
   echo "$OUT" >&2
   exit 3
