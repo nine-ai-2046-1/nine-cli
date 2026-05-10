@@ -43,3 +43,5 @@ scripts/install_sample_skill.sh
 ```sh
 nine-cli hello
 ```
+
+Reference: this project follows the agentskills.io specification — https://agentskills.io/specification
