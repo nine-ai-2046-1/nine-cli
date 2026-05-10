@@ -1,64 +1,76 @@
-# nine-cli 🛠️
 
+# nine-cli — 本地運行與分享 CLI skills ⚡️
 
-nine-cli 用 Rust 寫成，透過檔案系統作為 skills registry，提供安裝/移除、基本驗證（依 agentskills 規則），同埋國際化嘅訊息模板。
+nine-cli 係一個細小而實用嘅 Rust CLI，讓人同自動 agent 可以尋找、安裝、同埋呼叫「skills」— 即係其他人寫嘅小型 CLI 工具。佢係一個本地嘅技能倉庫，方便團隊或 agent 呼叫。
+
+點解用 nine-cli？
+- 你／agent 可以直接用技能名呼叫命令，例如 `nine-cli weather`。
+- 可以安裝其他人寫嘅 CLI 到本地註冊表（`~/.nine-cli/skills`），變成可重用嘅工具。
+- 每個 skill 需要有結構清晰嘅 metadata（SKILL.md frontmatter）同命名規則，方便 agent 自動發現同呼叫。
 
 主要功能
-- 安裝/移除 skills 到用戶目錄 (~/.nine-cli/skills)。
-- 以技能名運行已安裝嘅 skill，會執行 skills/<name>/cli/run，並轉發 stdin/stdout/stderr。
-- 驗證 SKILL.md frontmatter（name + description）同基本名稱規則，配合 agentskills.io 慣例。
-- 支援多語系嘅 messages.toml 模板，可以做簡單嘅 {name}/{path}/{reason} 參數替換。
-- repo 包含 examples/skills/hello 範例，方便快速試用。
+- 安裝/移除：`nine-cli skill add <path>` / `nine-cli skill remove <name>`
+- 列表：`nine-cli skill list`
+- 執行：`nine-cli <skill-name> [args...]`（會轉發 stdin/stdout/stderr）
+- 驗證：針對 SKILL.md 同命名做最少量驗證
+- 支援多語系訊息模板
 
-快速上手
-1. Build CLI：
+快速上手（三步）
+1) Build CLI：
 
 ```sh
 cargo build --release
 ```
 
-2. 安裝本地 skill：
+2) 安裝本地 skill：
 
 ```sh
-./target/release/nine-cli skill add /path/to/your/skill
+./target/release/nine-cli skill add /path/to/skill
 ```
 
-3. 列出已安裝 skills：
+3) 運行 skill：
 
 ```sh
-./target/release/nine-cli skill list
-```
-
-4. 運行 skill：
-
-```sh
-./target/release/nine-cli hello arg1 arg2
+./target/release/nine-cli <skill-name> arg1 arg2
 ```
 
 示例
-- repository 有個 examples/skills/hello，包含最少量嘅 SKILL.md、CLI.md 同 cli/run script。可以用 scripts/install_sample_skill.sh 快速安裝到 ~/.nine-cli/skills。
+- repo 已包含 `examples/skills/hello`，係一個可即刻運行嘅範例。用 `scripts/install_sample_skill.sh` 可以快速安裝到 `~/.nine-cli/skills`。
 
-關於 agentskill 規格
-- verify_skill 做咗最基本嘅驗證：
-  - 必須有 SKILL.md，同包含 YAML frontmatter，有 `name` 同 `description`。
-  - `name` 要 1-64 字元，只可以係小寫英文字母、數字同連字符（hyphen），唔能夠以 hyphen 開頭/結尾，亦唔能夠有連續 hyphen。
-  - 必須有 `cli/run` 檔案（可以係 script 或 binary）。
+agentskills 規格（我哋 enforce 嘅重點）
+- `SKILL.md` 必須有 YAML frontmatter，並包含 `name` 同 `description`。
+- `name` 規則：1–64 字元；只使用小寫英文字母、數字同 hyphen；唔可以以 hyphen 開頭/結尾；唔可以有連續 hyphen。
+- `cli/run` 必須存在於 skill folder（script 或 binary 都得）。
 
-如果需要更嚴格嘅驗證，可以提供完整 agentskills.io schema，我會協助擴充。
+信任與安全提醒 ⚠️
+- nine-cli 會執行任意第三方程式碼。唔好安裝來歷不明或未經審查嘅 skills。安裝前請審核 `cli/run` 同 SKILL.md。
+- 第三方 skill 嘅輸出可能有誤或有惡意行為，請自行核實資訊。我哋唔對用戶安裝或執行嘅第三方程式碼負責。
 
-國際化
-- 訊息檔案放喺 src/languages/<lang>/messages.toml，預設語言設定喺 src/languages/default.toml。CLI 會讀取模板並做 {name}/{path}/{reason} 替換。
+開發者指南 — 點樣為 nine-cli 開發 skill 🚀
+最基本嘅目錄結構：
 
-開發者筆記
-- 檔案結構：
-  - src/cli/mod.rs：主要 CLI 與 skill 管理邏輯
-  - src/cli/welcome.rs：歡迎訊息
-  - examples/skills/：範例 skills
-  - scripts/：輔助腳本（例如安裝範例 skill）
-- messages loader 會快取已解析嘅 messages.toml，避免重複 IO。
+```
+my-skill/
+  SKILL.md
+  CLI.md
+  TEST.md
+  tests/
+  cli/run
+  scripts/
+```
 
-貢獻方式
-- 從 main 建新分支改 code，發 PR 即可。歡迎加測試。
+SKILL.md 範例 frontmatter：
 
-授權
-- MIT
+```yaml
+---
+name: my-skill
+description: A helpful tool for X
+---
+```
+
+確保 `cli/run` 可執行 (`chmod +x cli/run`)，同文件夾名要同 SKILL.md 裡面嘅 `name` 一致。
+
+更多文件與教學請見 `docs/` 目錄（有英文同中文版本），包含使用說明、技能結構同開發指南。
+
+貢獻同授權
+- 從 `main` 開分支，發 PR，通過審查後會合併。代碼採 MIT 授權。
