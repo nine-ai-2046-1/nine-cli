@@ -64,7 +64,8 @@ fn dispatch_skill(skill: &str, args: &[String]) -> Result<(), String> {
         return Err("Skill唔存在".to_string());
     }
 
-    let run_path = skill_dir.join("bin").join("run");
+    // use cli/run as the canonical entrypoint for installed skills
+    let run_path = skill_dir.join("cli").join("run");
     if !run_path.is_file() {
         return Err("Skill唔存在".to_string());
     }
