@@ -35,4 +35,10 @@ Security
 
 - Do not run untrusted code in production. Validate the skill source and tests before installing.
 
+---
+
+Reference & spec
+
+This project follows the agentskills.io specification: https://agentskills.io/specification
+
 Reference: this project follows the agentskills.io specification — https://agentskills.io/specification
