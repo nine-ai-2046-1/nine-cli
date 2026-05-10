@@ -171,34 +171,54 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
     if args.is_empty() {
         return Err("請指定 skill 子命令: install|list|uninstall".to_string());
     }
-    match args[0].as_str() {
+    // detect --json/-j flag anywhere in the args and strip it
+    let mut json_mode = false;
+    let mut cleaned: Vec<String> = Vec::new();
+    for a in args.iter() {
+        if a == "--json" || a == "-j" {
+            json_mode = true;
+            continue;
+        }
+        cleaned.push(a.clone());
+    }
+
+    match cleaned.get(0).map(|s| s.as_str()).unwrap_or("") {
         // support both new `add` and legacy `install`
         "add" | "install" => {
+            if cleaned.len() < 2 {
+                return Err(load_message("please_provide_install_path", None));
+            }
+            let path = &cleaned[1];
+            install_skill(path, json_mode)
+        }
+        "list" => list_skills(),
+        // verify a local skill folder without installing it
+        "verify" => {
             if args.len() < 2 {
                 return Err(load_message("please_provide_install_path", None));
             }
             let path = &args[1];
-            install_skill(path)
+            verify_skill_cmd(path)
         }
-        "list" => list_skills(),
         // support both new `remove` and legacy `uninstall`
         "remove" | "uninstall" => {
-            if args.len() < 2 {
+            if cleaned.len() < 2 {
                 return Err(load_message("please_provide_uninstall_name", None));
             }
             // check for -y flag
             let mut yes = false;
-            let name = args[1].clone();
-            if args.len() > 2 {
-                for a in &args[2..] {
+            let name = cleaned[1].clone();
+            if cleaned.len() > 2 {
+                for a in &cleaned[2..] {
                     if a == "-y" {
                         yes = true;
                     }
                 }
             }
-            uninstall_skill(&name, yes)
+            uninstall_skill(&name, yes, json_mode)
         }
         other => {
+            let other = other;
             let mut vars = std::collections::HashMap::new();
             vars.insert("name", other.to_string());
             Err(load_message("unknown_skill_subcommand", Some(&vars)))
@@ -206,7 +226,7 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
     }
 }
 
-fn install_skill(src_path: &str) -> Result<(), String> {
+fn install_skill(src_path: &str, json_mode: bool) -> Result<(), String> {
     use std::fs;
     use std::path::Path;
 
@@ -284,7 +304,17 @@ fn install_skill(src_path: &str) -> Result<(), String> {
     let mut vars = std::collections::HashMap::new();
     vars.insert("name", skill_name.to_string());
     vars.insert("path", dest.display().to_string());
-    println!("{}", load_message("skill_install_success", Some(&vars)));
+    let msg = load_message("skill_install_success", Some(&vars));
+    if json_mode {
+        let mut map = serde_json::Map::new();
+        map.insert("success".to_string(), serde_json::Value::Bool(true));
+        map.insert("name".to_string(), serde_json::Value::String(skill_name.to_string()));
+        map.insert("path".to_string(), serde_json::Value::String(dest.display().to_string()));
+        map.insert("message".to_string(), serde_json::Value::String(msg));
+        println!("{}", serde_json::Value::Object(map).to_string());
+    } else {
+        println!("{}", msg);
+    }
     Ok(())
 }
 
@@ -307,15 +337,24 @@ fn list_skills() -> Result<(), String> {
         }
     }
     entries.sort();
-    for e in entries { println!("{}", e); }
+    for e in entries {
+        println!("{}", e);
+    }
     Ok(())
 }
 
-fn uninstall_skill(name: &str, yes: bool) -> Result<(), String> {
+fn uninstall_skill(name: &str, yes: bool, json_mode: bool) -> Result<(), String> {
     use std::fs;
     let home = dirs::home_dir().ok_or_else(|| "未能取得家目錄".to_string())?;
     let path = home.join(".nine-cli").join("skills").join(name);
     if !path.exists() {
+        if json_mode {
+            let mut map = serde_json::Map::new();
+            map.insert("success".to_string(), serde_json::Value::Bool(false));
+            map.insert("message".to_string(), serde_json::Value::String(load_message("skill_not_found", None)));
+            println!("{}", serde_json::Value::Object(map).to_string());
+            return Ok(());
+        }
         return Err(load_message("skill_not_found", None));
     }
     if !yes {
@@ -337,7 +376,35 @@ fn uninstall_skill(name: &str, yes: bool) -> Result<(), String> {
     fs::remove_dir_all(&path).map_err(|e| format!("移除時出錯: {}", e))?;
     let mut vars = std::collections::HashMap::new();
     vars.insert("name", name.to_string());
-    println!("{}", load_message("skill_remove_success", Some(&vars)));
+    let msg = load_message("skill_remove_success", Some(&vars));
+    if json_mode {
+        let mut map = serde_json::Map::new();
+        map.insert("success".to_string(), serde_json::Value::Bool(true));
+        map.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+        map.insert("message".to_string(), serde_json::Value::String(msg));
+        println!("{}", serde_json::Value::Object(map).to_string());
+    } else {
+        println!("{}", msg);
+    }
+    Ok(())
+}
+
+fn verify_skill_cmd(path: &str) -> Result<(), String> {
+    use std::path::Path;
+    let p = Path::new(path);
+    let mut out = serde_json::Map::new();
+    match verify_skill(p) {
+        Ok(()) => {
+            out.insert("success".to_string(), serde_json::Value::Bool(true));
+            out.insert("message".to_string(), serde_json::Value::String("OK".to_string()));
+        }
+        Err(e) => {
+            out.insert("success".to_string(), serde_json::Value::Bool(false));
+            out.insert("message".to_string(), serde_json::Value::String(e));
+        }
+    }
+    let j = serde_json::Value::Object(out);
+    println!("{}", serde_json::to_string(&j).unwrap_or_else(|_| "{\"success\":false,\"message\":\"json_encode_error\"}".to_string()));
     Ok(())
 }
 

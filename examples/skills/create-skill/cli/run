@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR=$(pwd)
+
+echo "Welcome to create-skill wizard"
+
+read -p "Skill name (lowercase letters, digits, hyphens only): " NAME
+while [[ ! "$NAME" =~ ^[a-z0-9]([a-z0-9\-]{0,62}[a-z0-9])?$ ]]; do
+  echo "Invalid name. Must be 1-64 chars, lowercase letters, digits, hyphens, no leading/trailing or consecutive hyphens."
+  read -p "Skill name: " NAME
+done
+
+read -p "Description (one line): " DESC
+while [[ -z "$DESC" ]]; do
+  echo "Description cannot be empty."
+  read -p "Description: " DESC
+done
+
+read -p "Create in current directory? (Y/n): " CONFIRM
+if [[ "$CONFIRM" =~ ^[Nn] ]]; then
+  read -p "Path to create skill folder: " TARGET
+else
+  TARGET="$ROOT_DIR"
+fi
+
+SKILL_DIR="$TARGET/$NAME"
+if [[ -e "$SKILL_DIR" ]]; then
+  echo "Target folder exists: $SKILL_DIR" >&2
+  exit 1
+fi
+
+mkdir -p "$SKILL_DIR/cli"
+mkdir -p "$SKILL_DIR/tests"
+
+cat > "$SKILL_DIR/SKILL.md" <<EOF
+---
+name: $NAME
+description: $DESC
+---
+
+EOF
+
+cat > "$SKILL_DIR/CLI.md" <<EOF
+# $NAME
+
+$DESC
+EOF
+
+cat > "$SKILL_DIR/TEST.md" <<EOF
+Manual tests for $NAME
+EOF
+
+cat > "$SKILL_DIR/cli/run" <<'RUN'
+#!/usr/bin/env bash
+echo "This is the $NAME skill. Args: $@"
+RUN
+
+chmod +x "$SKILL_DIR/cli/run"
+
+echo "Created skill at $SKILL_DIR"
+
+echo "Running nine-cli skill verify $SKILL_DIR"
+if command -v nine-cli >/dev/null 2>&1; then
+  nine-cli skill verify "$SKILL_DIR"
+else
+  echo "nine-cli not found in PATH; please run 'nine-cli skill verify $SKILL_DIR' manually"
+fi
+
+echo "Done."
