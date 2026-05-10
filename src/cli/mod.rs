@@ -273,7 +273,31 @@ use std::path::Path;
     let home = dirs::home_dir().ok_or_else(|| "未能取得家目錄".to_string())?;
     let dest = home.join(".nine-cli").join("skills").join(skill_name);
     if dest.exists() {
-        return Err(load_message("skill_already_exists", None));
+        // interactive prompt to confirm replacement when installing over existing skill
+        if json_mode {
+            // in json mode, return a structured error instead of prompting
+            let mut map = serde_json::Map::new();
+            map.insert("success".to_string(), serde_json::Value::Bool(false));
+            map.insert("message".to_string(), serde_json::Value::String(load_message("skill_already_exists", None)));
+            println!("{}", serde_json::Value::Object(map).to_string());
+            return Ok(());
+        }
+
+        use std::io::{self, Write};
+        let mut vars = std::collections::HashMap::new();
+        vars.insert("name", skill_name.to_string());
+        print!("{}", load_message("skill_replace_confirm", Some(&vars)));
+        let _ = io::stdout().flush();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).map_err(|e| format!("讀入回應失敗: {}", e))?;
+        let resp = input.trim().to_lowercase();
+        if resp != "y" && resp != "yes" {
+            println!("{}", load_message("skill_replace_cancelled", None));
+            return Ok(());
+        }
+
+        // remove existing and continue installing
+        std::fs::remove_dir_all(&dest).map_err(|e| format!("移除舊的 skill 時出錯: {}", e))?;
     }
 
     copy_dir_all(src, &dest).map_err(|e| format!("複製 skill 時出錯: {}", e))?;
