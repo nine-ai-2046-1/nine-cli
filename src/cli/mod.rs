@@ -124,27 +124,34 @@ fn show_user_guide() {
 }
 
 fn load_message(key: &str, vars: Option<&std::collections::HashMap<&str, String>>) -> String {
+    use once_cell::sync::OnceCell;
     use std::fs;
     use std::path::PathBuf;
 
-    // read default language
-    let default_toml_path: PathBuf = ["src", "languages", "default.toml"].iter().collect();
-    let default_lang = fs::read_to_string(&default_toml_path)
-        .ok()
-        .and_then(|s| toml::from_str::<toml::Value>(&s).ok())
-        .and_then(|v| v.get("default").and_then(|d| d.as_str().map(|s| s.to_string())))
-        .unwrap_or_else(|| "zh-hk".to_string());
+    // Cache parsed messages.toml for the default language to avoid repeated file IO
+    static MESSAGES: OnceCell<Option<toml::Value>> = OnceCell::new();
 
-    let msg_path: PathBuf = ["src", "languages", &default_lang, "messages.toml"].iter().collect();
-    let content = fs::read_to_string(&msg_path).ok();
-    let mut template = None;
-    if let Some(ref s) = content {
-        if let Ok(v) = toml::from_str::<toml::Value>(s) {
-            if let Some(val) = v.get(key).and_then(|x| x.as_str()) {
-                template = Some(val.to_string());
+    // lazily initialize cache
+    let _ = MESSAGES.get_or_init(|| {
+        // read default language
+        let default_toml_path: PathBuf = ["src", "languages", "default.toml"].iter().collect();
+        let default_lang = fs::read_to_string(&default_toml_path)
+            .ok()
+            .and_then(|s| toml::from_str::<toml::Value>(&s).ok())
+            .and_then(|v| v.get("default").and_then(|d| d.as_str().map(|s| s.to_string())))
+            .unwrap_or_else(|| "zh-hk".to_string());
+
+        let msg_path: PathBuf = ["src", "languages", &default_lang, "messages.toml"].iter().collect();
+        let content = fs::read_to_string(&msg_path).ok();
+        if let Some(ref s) = content {
+            if let Ok(v) = toml::from_str::<toml::Value>(s) {
+                return Some(v);
             }
         }
-    }
+        None
+    });
+
+    let template = MESSAGES.get().and_then(|opt| opt.as_ref()).and_then(|v| v.get(key)).and_then(|x| x.as_str()).map(|s| s.to_string());
 
     let mut out = template.unwrap_or_else(|| key.to_string());
     if let Some(map) = vars {
@@ -181,7 +188,7 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
             }
             // check for -y flag
             let mut yes = false;
-            let mut name = args[1].clone();
+            let name = args[1].clone();
             if args.len() > 2 {
                 for a in &args[2..] {
                     if a == "-y" {
@@ -201,7 +208,7 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
 
 fn install_skill(src_path: &str) -> Result<(), String> {
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     let src = Path::new(src_path);
     if !src.exists() || !src.is_dir() {
@@ -341,7 +348,6 @@ fn verify_skill(skill: &std::path::Path) -> Result<(), String> {
     // - name follows constraints (lowercase letters, numbers, hyphens only, 1-64 chars, no leading/trailing hyphen, no consecutive hyphens)
     // - bin/run exists and appears to be a binary (not plain text, jpg etc.)
     use std::fs;
-    use std::path::Path;
 
     let skill_md = skill.join("SKILL.md");
     if !skill_md.is_file() {
