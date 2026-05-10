@@ -1,64 +1,78 @@
-# nine-cli 🛠️
+# nine-cli — Run & share CLI skills locally ⚡️
 
+nine-cli is a tiny, focused Rust CLI that lets humans and automated agents discover, install, and invoke "skills" — small CLI packages written by anyone. Use it to modularize tools, let agents call local commands reliably, or share handy CLI utilities across your team.
 
-nine-cli is a small Rust program that provides a simple filesystem-based skills registry, installation helpers, validation against a minimal agentskills spec, and a user-friendly command interface with internationalized messages.
+Why you'll like it
+- Run skills by name from your terminal or from an agent/process: `nine-cli weather`.
+- Install third-party CLI tools (skills) into your local registry (`~/.nine-cli/skills`).
+- Each skill adheres to a simple spec (SKILL.md + folder structure) so agents can safely discover and execute them.
+- Lightweight, no central server — you control what gets installed.
 
-Key features
-- Install and remove skills into a per-user directory (~/.nine-cli/skills).
-- Run installed skills by name; the skill's cli/run is executed with stdio forwarded.
-- Verify SKILL.md frontmatter (name + description) and basic name rules to follow agentskills.io conventions.
-- i18n-ready message templates (messages.toml) with simple variable substitution.
-- Example skill shipped under examples/skills/hello to get started quickly.
+Core capabilities
+- Install/remove skills: `nine-cli skill add <path>` / `nine-cli skill remove <name>`
+- List installed skills: `nine-cli skill list`
+- Run skills: `nine-cli <skill-name> [args...]` (forwards stdin/stdout/stderr)
+- Validation: basic agentskills-like checks on SKILL.md and naming conventions
+- Internationalized messages with templates and simple variable substitution
 
-Quick start
-1. Build the CLI:
+Quick Start
+1) Build the CLI:
 
 ```sh
 cargo build --release
 ```
 
-2. Install a skill (local folder):
+2) Install a skill (local folder):
 
 ```sh
-./target/release/nine-cli skill add /path/to/your/skill
+./target/release/nine-cli skill add /path/to/skill
 ```
 
-3. List installed skills:
+3) Run the skill:
 
 ```sh
-./target/release/nine-cli skill list
+./target/release/nine-cli <skill-name> arg1 arg2
 ```
 
-4. Run a skill:
+Trust & safety — read before you install ⚠️
+- Skills run arbitrary code. Do NOT install skills from unknown/untrusted sources without auditing their code. Review `cli/run` and SKILL.md before installing.
+- Always fact-check outputs from third-party skills; they may be incorrect or malicious.
+- We accept no responsibility for third-party code installed or executed via nine-cli.
 
-```sh
-./target/release/nine-cli hello arg1 arg2
+Agentskills rules we enforce
+- `SKILL.md` with YAML frontmatter including `name` and `description`.
+- `name`: 1–64 characters; lowercase letters, digits, and hyphens only; no leading/trailing hyphen; no consecutive hyphens.
+- `cli/run` must exist in the skill folder (script or binary).
+
+Developer guide (how to build a skill for nine-cli) 🚀
+Minimal folder layout:
+
+```
+my-skill/
+  SKILL.md         # YAML frontmatter with name + description
+  CLI.md           # optional user docs
+  TEST.md          # optional test instructions
+  tests/           # optional test files
+  cli/run          # entrypoint executed by nine-cli (script or binary)
+  scripts/         # optional helper scripts
 ```
 
-Example
-- The repository includes examples/skills/hello with a minimal SKILL.md, CLI docs and a cli/run script. Use the provided script scripts/install_sample_skill.sh to copy it into your ~/.nine-cli/skills for quick testing.
+SKILL.md frontmatter example:
 
-Agentskill spec notes
-- verify_skill implements a minimal enforcement of agentskills.io-like rules:
-  - SKILL.md must exist and include YAML frontmatter with `name` and `description`.
-  - `name` must be 1-64 characters, lowercase letters, numbers and hyphens only; must not start/end with hyphen or contain consecutive hyphens.
-  - `cli/run` must exist (can be a script or binary).
+```yaml
+---
+name: my-skill
+description: A helpful tool for X
+---
+```
 
-If you need stricter validation, provide the full agentskills.io schema and the project can be extended.
+Make `cli/run` executable (`chmod +x cli/run`) and ensure the folder name matches the `name` in SKILL.md.
 
-Internationalization
-- Messages live in src/languages/<lang>/messages.toml and the default language is set in src/languages/default.toml. The CLI loads templates and performs {name}/{path}/{reason} substitutions.
+Try the included example
+- `examples/skills/hello` is a working skill. Use `scripts/install_sample_skill.sh` to install it into `~/.nine-cli/skills` quickly.
 
-Development notes
-- Project layout:
-  - src/cli/mod.rs: main CLI and skill management logic
-  - src/cli/welcome.rs: welcome message
-  - examples/skills/: sample skills
-  - scripts/: helper scripts (e.g., install sample skill)
-- The messages loader caches the parsed messages.toml to avoid repeated IO.
+Where to find docs
+- See the `docs/` folder for detailed guides (English and Cantonese) covering usage, structure, and how to develop skills for nine-cli.
 
-Contributing
-- Create a branch from main, make changes, and open a PR. Tests are welcome.
-
-License
-- MIT
+Contributing & License
+- Create a branch from `main`, send a PR with clear intent and tests if possible. Code is MIT licensed.
