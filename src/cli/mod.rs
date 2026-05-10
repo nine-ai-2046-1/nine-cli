@@ -229,7 +229,6 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
 fn install_skill(src_path: &str, json_mode: bool) -> Result<(), String> {
     use std::fs;
 use std::path::Path;
-use serde_json::Value as JsonValue;
 
     let src = Path::new(src_path);
     if !src.exists() || !src.is_dir() {
