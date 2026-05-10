@@ -1,0 +1,7 @@
+#!/bin/sh
+echo "[skill hello] args: $@"
+echo "請在 stdin 輸入，EOF 結束："
+while read line; do
+  [ "$line" = "EOF" ] && break
+  echo "[skill hello] stdin: $line"
+done

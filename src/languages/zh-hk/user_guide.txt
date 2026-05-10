@@ -1,0 +1,15 @@
+歡迎使用 Nine-CLI 🎉
+
+使用方法：
+- nine-cli <skill> [args...]
+  會執行 $HOME/.nine-cli/skills/<skill>/bin/run 並把 args 轉發比佢，stdin/stdout/stderr 都會原封不動地傳遞。
+
+- nine-cli
+  顯示呢個使用說明。
+
+注意：
+- 如果 skills/<skill>/bin/run 冇存在，會顯示 "Skill唔存在"。
+- 程式會自動嘗試將 bin/run 設為可執行（Unix 系統），所以你可以直接用 download / git pull / copy 嘅方式安裝 skills。
+- 可以同時運行多個 skill 實例，互不影響。
+
+如需更多教學，請到 Git repo 查閱最新文件。
