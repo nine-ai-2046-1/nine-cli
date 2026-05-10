@@ -72,6 +72,8 @@ cargo build --release
 
 If you want stricter agentskills.io schema validation, provide the schema and we can extend the verifier.
 
+This project is implemented to follow the agentskills.io specification. See the official spec for full details: https://agentskills.io/specification
+
 ---
 
 ## 👩‍💻 For developers — build a skill that works well with nine-cli
