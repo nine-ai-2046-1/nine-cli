@@ -1,0 +1,15 @@
+Welcome to Nine-CLI 🎉
+
+Usage:
+- nine-cli <skill> [args...]
+  Executes $HOME/.nine-cli/skills/<skill>/bin/run with the given args. stdin/stdout/stderr are forwarded.
+
+- nine-cli
+  Shows this user guide.
+
+Notes:
+- If skills/<skill>/bin/run does not exist, the CLI will report "Skill唔存在".
+- The CLI will try to make bin/run executable on Unix systems, so you can install skills by download/git pull/copy.
+- Multiple instances of the same skill can run concurrently.
+
+For more documentation, check the Git repo for latest instructions.

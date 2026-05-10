@@ -1,0 +1,1 @@
+/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/libnine_cli.rlib: /Users/magicfuture/Documents/dev-2026/nine-cli/src/cli/mod.rs /Users/magicfuture/Documents/dev-2026/nine-cli/src/cli/welcome.rs /Users/magicfuture/Documents/dev-2026/nine-cli/src/lib.rs

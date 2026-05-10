@@ -1,0 +1,14 @@
+/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/deps/serde-98ffd5be1e284475.d: /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/build/serde-209aca3f82b8a419/out/private.rs
+
+/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/deps/libserde-98ffd5be1e284475.rlib: /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/build/serde-209aca3f82b8a419/out/private.rs
+
+/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/deps/libserde-98ffd5be1e284475.rmeta: /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/build/serde-209aca3f82b8a419/out/private.rs
+
+/Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/magicfuture/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/build/serde-209aca3f82b8a419/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/magicfuture/Documents/dev-2026/nine-cli/target/debug/build/serde-209aca3f82b8a419/out
