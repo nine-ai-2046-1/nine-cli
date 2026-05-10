@@ -44,4 +44,10 @@ scripts/install_sample_skill.sh
 nine-cli hello
 ```
 
+---
+
+Reference & spec
+
+This project follows the agentskills.io specification: https://agentskills.io/specification
+
 Reference: this project follows the agentskills.io specification — https://agentskills.io/specification

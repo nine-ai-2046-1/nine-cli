@@ -34,3 +34,9 @@ nine-cli my-skill --help
 安全提示
 
 - 盡量唔好喺生產環境直接執行未知來源嘅 skill，先審核原始碼同測試。
+
+---
+
+參考與規格
+
+本項目遵循 agentskills.io 規範： https://agentskills.io/specification
