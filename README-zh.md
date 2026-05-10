@@ -42,6 +42,8 @@ agentskills 規格（我哋 enforce 嘅重點）
 - `name` 規則：1–64 字元；只使用小寫英文字母、數字同 hyphen；唔可以以 hyphen 開頭/結尾；唔可以有連續 hyphen。
 - `cli/run` 必須存在於 skill folder（script 或 binary 都得）。
 
+本項目遵循 agentskills.io 規範；詳細規格請參閱：https://agentskills.io/specification
+
 信任與安全提醒 ⚠️
 - nine-cli 會執行任意第三方程式碼。唔好安裝來歷不明或未經審查嘅 skills。安裝前請審核 `cli/run` 同 SKILL.md。
 - 第三方 skill 嘅輸出可能有誤或有惡意行為，請自行核實資訊。我哋唔對用戶安裝或執行嘅第三方程式碼負責。

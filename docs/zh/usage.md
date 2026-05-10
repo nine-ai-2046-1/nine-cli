@@ -43,3 +43,5 @@ scripts/install_sample_skill.sh
 ```sh
 nine-cli hello
 ```
+
+參考：本項目遵循 agentskills.io 規範 — https://agentskills.io/specification
