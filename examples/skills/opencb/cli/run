@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+cd /path/to/your/opencb-serve/ && opencb send "$1" -t "$2" -d "$3"
+
+
+

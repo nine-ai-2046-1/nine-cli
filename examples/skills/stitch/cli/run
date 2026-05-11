@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# Relative path
+SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
+
+# Ensure it can be run
+chmod +x "$(dirname "$SCRIPT_PATH")/generate_design-md"
+
+# Check what user want to do
+if [[ "$1" == "generate" ]]; then
+    if [[ "$2" == "design-md" ]]; then
+        if [ $# -ne 4 ]; then
+            echo "唔夠資料呀你"
+        else
+            "$(dirname "$SCRIPT_PATH")/generate_design-md" "$3" "$4"
+        fi
+    else
+        echo "Generate咩呀你"
+    fi
+else
+    echo "Stitch咩呀你"
+fi

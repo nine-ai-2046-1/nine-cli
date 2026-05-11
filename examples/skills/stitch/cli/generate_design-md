@@ -1,0 +1,5 @@
+# Relative path
+SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
+
+cp "$(dirname "$SCRIPT_PATH")/prompts/generate-design-md.txt" "$(dirname "$SCRIPT_PATH")/instructions.txt"
+opencode run "Project ID: $1\n Reference url: $2" -f "$(dirname "$SCRIPT_PATH")/instructions.txt" --pure
