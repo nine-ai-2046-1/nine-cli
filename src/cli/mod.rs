@@ -194,7 +194,18 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
                 return Err(load_message("please_provide_install_path", None));
             }
             let path = &cleaned[1];
-            install_skill(path, json_mode)
+            if is_install_source_url(path) {
+                install_from_url(path, json_mode)
+            } else {
+                install_skill(path, json_mode)
+            }
+        }
+        "upgrade" => {
+            if cleaned.len() < 2 {
+                return Err("Please provide skill name to upgrade".to_string());
+            }
+            let name = &cleaned[1];
+            upgrade_skill(name, json_mode)
         }
         "list" => list_skills(),
         // verify a local skill folder without installing it
@@ -231,9 +242,17 @@ fn handle_skill_cmd(args: &[String]) -> Result<(), String> {
     }
 }
 
+// Public wrapper used by the CLI. Tests can call install_skill_with_confirm to simulate user input.
 fn install_skill(src_path: &str, json_mode: bool) -> Result<(), String> {
+    install_skill_with_confirm(src_path, json_mode, None)
+}
+
+// Internal implementation which accepts an optional confirm input for tests. If `confirm_input` is
+// Some("y"/"yes"), it will behave as if the user typed that at the prompt. If None, it will
+// prompt the real stdin when needed.
+fn install_skill_with_confirm(src_path: &str, json_mode: bool, confirm_input: Option<&str>) -> Result<(), String> {
     use std::fs;
-use std::path::Path;
+    use std::path::Path;
 
     let src = Path::new(src_path);
     if !src.exists() || !src.is_dir() {
@@ -283,15 +302,22 @@ use std::path::Path;
             return Ok(());
         }
 
-        use std::io::{self, Write};
-        let mut vars = std::collections::HashMap::new();
-        vars.insert("name", skill_name.to_string());
-        print!("{}", load_message("skill_replace_confirm", Some(&vars)));
-        let _ = io::stdout().flush();
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).map_err(|e| format!("讀入回應失敗: {}", e))?;
-        let resp = input.trim().to_lowercase();
-        if resp != "y" && resp != "yes" {
+        let confirmed = if let Some(input) = confirm_input {
+            let resp = input.trim().to_lowercase();
+            resp == "y" || resp == "yes"
+        } else {
+            use std::io::{self, Write};
+            let mut vars = std::collections::HashMap::new();
+            vars.insert("name", skill_name.to_string());
+            print!("{}", load_message("skill_replace_confirm", Some(&vars)));
+            let _ = io::stdout().flush();
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).map_err(|e| format!("讀入回應失敗: {}", e))?;
+            let resp = input.trim().to_lowercase();
+            resp == "y" || resp == "yes"
+        };
+
+        if !confirmed {
             println!("{}", load_message("skill_replace_cancelled", None));
             return Ok(());
         }
@@ -301,6 +327,10 @@ use std::path::Path;
     }
 
     copy_dir_all(src, &dest).map_err(|e| format!("複製 skill 時出錯: {}", e))?;
+
+    // if this install originated from a git URL, metadata should have been written by caller
+    // (install_from_url handles metadata). We do not write metadata here to keep this function
+    // test-friendly and side-effect free regarding git.
 
     // set permissions: cli/run executable; scripts/* executable
     #[cfg(unix)]
@@ -370,6 +400,179 @@ fn list_skills() -> Result<(), String> {
         println!("{}", e);
     }
     Ok(())
+}
+
+// determine if a given string is a plausible git/http(s) URL for a repo
+fn is_install_source_url(s: &str) -> bool {
+    if s.starts_with("http://") || s.starts_with("https://") || s.starts_with("git@") || s.starts_with("ssh://") || s.starts_with("git://") {
+        return true;
+    }
+    // permissive: accept strings ending with .git
+    if s.ends_with(".git") {
+        return true;
+    }
+    false
+}
+
+// Clone a git repo to a temporary directory and return the path. Uses system `git` command.
+fn clone_repo_to_tmp(url: &str) -> Result<tempfile::TempDir, String> {
+    use std::process::Command;
+
+    let tmp = tempfile::tempdir().map_err(|e| format!("failed to create tempdir: {}", e))?;
+    let path = tmp.path().to_str().ok_or_else(|| "invalid temp path".to_string())?;
+
+    let status = Command::new("git")
+        .arg("clone")
+        .arg("--depth")
+        .arg("1")
+        .arg(url)
+        .arg(path)
+        .status()
+        .map_err(|e| format!("failed to spawn git: {}", e))?;
+
+    if !status.success() {
+        return Err(format!("git clone failed with status: {}", status));
+    }
+    Ok(tmp)
+}
+
+// Find the skill directory inside a cloned repo. Returns the path to the folder that contains SKILL.md
+fn find_skill_dir_in_clone(tmp: &std::path::Path) -> Option<std::path::PathBuf> {
+    use std::fs;
+    // if SKILL.md exists at root
+    if tmp.join("SKILL.md").is_file() {
+        return Some(tmp.to_path_buf());
+    }
+    // if there is exactly one child dir and it contains SKILL.md, use that
+    if let Ok(mut entries) = fs::read_dir(tmp) {
+        let mut dirs = vec![];
+        while let Some(Ok(ent)) = entries.next() {
+            if ent.path().is_dir() {
+                dirs.push(ent.path());
+            }
+        }
+        if dirs.len() == 1 && dirs[0].join("SKILL.md").is_file() {
+            return Some(dirs.remove(0));
+        }
+    }
+    None
+}
+
+// Write metadata about a installed skill source URL. Stored at dest/.nine-cli-meta.json
+fn write_install_metadata(dest: &std::path::Path, url: &str) -> Result<(), String> {
+    use std::fs;
+    use serde_json::json;
+    let meta = json!({
+        "source": url,
+        "installed_at": chrono::Utc::now().to_rfc3339(),
+    });
+    let p = dest.join(".nine-cli-meta.json");
+    fs::write(&p, meta.to_string()).map_err(|e| format!("failed to write metadata: {}", e))?;
+    Ok(())
+}
+
+// Read metadata source URL if present
+fn read_install_metadata(dest: &std::path::Path) -> Option<String> {
+    use std::fs;
+    let p = dest.join(".nine-cli-meta.json");
+    if !p.is_file() {
+        return None;
+    }
+    let s = fs::read_to_string(&p).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&s).ok()?;
+    v.get("source").and_then(|x| x.as_str()).map(|s| s.to_string())
+}
+
+// Install from a git URL. Clones to tempdir, finds skill dir, verifies and installs. Writes metadata on success.
+fn install_from_url(url: &str, json_mode: bool) -> Result<(), String> {
+    let tmp = clone_repo_to_tmp(url)?;
+    let tmp_path = tmp.path();
+    let src = find_skill_dir_in_clone(tmp_path).ok_or_else(|| "No SKILL.md found in cloned repository".to_string())?;
+    // call existing install flow but do not prompt for confirm here (install_skill_with_confirm handles replacement)
+    let res = install_skill_with_confirm(src.to_str().ok_or_else(|| "invalid path".to_string())?, json_mode, None);
+    match res {
+        Ok(()) => {
+            // write metadata to installed dest
+            let skill_name = src.file_name().and_then(|s| s.to_str()).ok_or_else(|| "invalid skill name".to_string())?;
+            let home = dirs::home_dir().ok_or_else(|| "未能取得家目錄".to_string())?;
+            let dest = home.join(".nine-cli").join("skills").join(skill_name);
+            let _ = write_install_metadata(&dest, url);
+            Ok(())
+        }
+        Err(e) => {
+            // install failed; ensure nothing left behind in case of partial install
+            Err(e)
+        }
+    }
+}
+
+// Upgrade an installed skill by name. If metadata source exists or .git exists, attempt to pull/clone and replace.
+fn upgrade_skill(name: &str, json_mode: bool) -> Result<(), String> {
+    use std::process::Command;
+    use std::fs;
+    let home = dirs::home_dir().ok_or_else(|| "未能取得家目錄".to_string())?;
+    let dest = home.join(".nine-cli").join("skills").join(name);
+    if !dest.exists() {
+        return Err(load_message("skill_not_found", None));
+    }
+
+    // prefer metadata source
+    if let Some(url) = read_install_metadata(&dest) {
+        // clone fresh and replace
+        let tmp = clone_repo_to_tmp(&url)?;
+        let src = find_skill_dir_in_clone(tmp.path()).ok_or_else(|| "No SKILL.md found in cloned repository".to_string())?;
+        // verify before replacing
+        verify_skill(&src).map_err(|e| format!("verification failed after clone: {}", e))?;
+        // ask for confirmation
+        if !json_mode {
+            use std::io::{self, Write};
+            let mut vars = std::collections::HashMap::new();
+            vars.insert("name", name.to_string());
+            print!("{}", load_message("skill_replace_confirm", Some(&vars)));
+            let _ = io::stdout().flush();
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).map_err(|e| format!("讀入回應失敗: {}", e))?;
+            let resp = input.trim().to_lowercase();
+            if resp != "y" && resp != "yes" {
+                println!("{}", load_message("skill_replace_cancelled", None));
+                return Ok(());
+            }
+        } else {
+            // json_mode: do not prompt; proceed
+        }
+
+        // remove and copy
+        fs::remove_dir_all(&dest).map_err(|e| format!("移除舊的 skill 時出錯: {}", e))?;
+        copy_dir_all(&src, &dest).map_err(|e| format!("複製 skill 時出錯: {}", e))?;
+        write_install_metadata(&dest, &url).ok();
+        let mut m = std::collections::HashMap::new();
+        m.insert("name", name.to_string());
+        m.insert("path", dest.display().to_string());
+        println!("{}", load_message("skill_install_success", Some(&m)));
+        return Ok(());
+    }
+
+    // try .git
+    if dest.join(".git").is_dir() {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(dest.to_str().ok_or_else(|| "invalid path".to_string())?)
+            .arg("pull")
+            .status()
+            .map_err(|e| format!("failed to spawn git: {}", e))?;
+        if !status.success() {
+            return Err(format!("git pull failed: {}", status));
+        }
+        // verify
+        verify_skill(&dest).map_err(|e| format!("verification failed after pull: {}", e))?;
+        let mut m = std::collections::HashMap::new();
+        m.insert("name", name.to_string());
+        m.insert("path", dest.display().to_string());
+        println!("{}", load_message("skill_install_success", Some(&m)));
+        return Ok(());
+    }
+
+    Err("This skill was not installed from a git repository and cannot be upgraded; consider reinstalling from the repo URL".to_string())
 }
 
 fn uninstall_skill(name: &str, yes: bool, json_mode: bool) -> Result<(), String> {
