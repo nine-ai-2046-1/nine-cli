@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+RES=$(nine-cron chat --silent --yes --msg "$*")
+RES=$(sed 's/\x1b\[[0-9;]*m//g' <<< "$RES")
+
+echo $RES
