@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+CODE=$1
+KTYPE=$2
+DATE=$(date +"%Y-%m-%d")
+
+KTYPE_TEXT="冇圖"
+if [ "$KTYPE" = "1d" ]; then
+  KTYPE_TEXT="日線圖"
+elif [ "$KTYPE" = "1m" ]; then
+  KTYPE_TEXT="1分鐘圖"
+elif [ "$KTYPE" = "5m" ]; then
+  KTYPE_TEXT="5分鐘圖"
+fi
+
+DATA="$(nine-futu quote kline -k "$KTYPE" -p 60 -c "$CODE")"
+ANA="$(nine-poe --model "NS2026-$KTYPE" --prompt "$DATA")"
+RES="$CODE $KTYPE_TEXT 分析 ($DATE) \n $ANA"
+echo "$RES"

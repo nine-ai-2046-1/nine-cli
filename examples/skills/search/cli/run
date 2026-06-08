@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+nine-poe --model "GLM-4.7-Flash" --prompt "總結以下新聞，用香港 人洗廣東話風格加大量Emoji及point form去表達：\n$(nine-search --query \"$*\")"
